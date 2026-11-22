@@ -1,0 +1,6 @@
+{
+  "name": "RiderGuard",
+  "description": "Smart Rider Safety and Emergency Management System with live GPS tracking, sensor-based accident detection, SOS alerts, medical ID vault, nearby hospital finder, and admin dispatch console.",
+  "requestFramePermissions": ["geolocation"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

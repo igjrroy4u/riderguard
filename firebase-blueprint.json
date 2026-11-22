@@ -1,0 +1,467 @@
+{
+  "entities": {
+    "RiderProfile": {
+      "title": "RiderProfile",
+      "description": "Core rider account, personal identity, biometric settings, and accident detection preferences.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "fullName": { "type": "string", "maxLength": 120 },
+        "email": { "type": "string", "format": "email", "maxLength": 160 },
+        "mobileNumber": { "type": "string", "maxLength": 24 },
+        "dateOfBirth": { "type": "string", "maxLength": 20 },
+        "age": { "type": "number" },
+        "profilePhotoUrl": { "type": "string", "maxLength": 65000 },
+        "role": { "type": "string", "enum": ["rider", "admin"] },
+        "biometricEnabled": { "type": "boolean" },
+        "biometricCredentialId": { "type": "string", "maxLength": 256 },
+        "accidentCountdownSec": { "type": "number" },
+        "impactThresholdG": { "type": "number" },
+        "autoSmsEnabled": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "uid",
+        "fullName",
+        "email",
+        "mobileNumber",
+        "dateOfBirth",
+        "age",
+        "profilePhotoUrl",
+        "role",
+        "biometricEnabled",
+        "biometricCredentialId",
+        "accidentCountdownSec",
+        "impactThresholdG",
+        "autoSmsEnabled",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "MedicalRecord": {
+      "title": "MedicalRecord",
+      "description": "Isolated sensitive medical profile and AES-GCM encrypted Aadhaar vault for a rider.",
+      "type": "object",
+      "properties": {
+        "riderId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "bloodGroup": { "type": "string", "maxLength": 10 },
+        "medicalConditions": { "type": "string", "maxLength": 500 },
+        "allergies": { "type": "string", "maxLength": 500 },
+        "medicalHistory": { "type": "string", "maxLength": 1500 },
+        "emergencyInstructions": { "type": "string", "maxLength": 1000 },
+        "aadhaarMasked": { "type": "string", "maxLength": 24 },
+        "aadhaarEncrypted": { "type": "string", "maxLength": 600 },
+        "encryptionIv": { "type": "string", "maxLength": 64 },
+        "encryptionSalt": { "type": "string", "maxLength": 64 },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "riderId",
+        "bloodGroup",
+        "medicalConditions",
+        "allergies",
+        "medicalHistory",
+        "emergencyInstructions",
+        "aadhaarMasked",
+        "aadhaarEncrypted",
+        "encryptionIv",
+        "encryptionSalt",
+        "updatedAt"
+      ]
+    },
+    "Bike": {
+      "title": "Bike",
+      "description": "Motorcycle registration, insurance, RC details, and vehicle photo belonging to a rider.",
+      "type": "object",
+      "properties": {
+        "riderId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "registrationNumber": { "type": "string", "maxLength": 32 },
+        "brand": { "type": "string", "maxLength": 60 },
+        "model": { "type": "string", "maxLength": 80 },
+        "color": { "type": "string", "maxLength": 40 },
+        "manufacturingYear": { "type": "number" },
+        "vehiclePhotoUrl": { "type": "string", "maxLength": 65000 },
+        "insuranceProvider": { "type": "string", "maxLength": 100 },
+        "insurancePolicyNumber": { "type": "string", "maxLength": 80 },
+        "insuranceExpiry": { "type": "string", "maxLength": 20 },
+        "rcNumber": { "type": "string", "maxLength": 60 },
+        "ownerName": { "type": "string", "maxLength": 120 },
+        "isPrimary": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "riderId",
+        "registrationNumber",
+        "brand",
+        "model",
+        "color",
+        "manufacturingYear",
+        "vehiclePhotoUrl",
+        "insuranceProvider",
+        "insurancePolicyNumber",
+        "insuranceExpiry",
+        "rcNumber",
+        "ownerName",
+        "isPrimary",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "EmergencyContact": {
+      "title": "EmergencyContact",
+      "description": "Priority-ordered emergency contact notified during SOS or detected accidents.",
+      "type": "object",
+      "properties": {
+        "riderId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "name": { "type": "string", "maxLength": 120 },
+        "relationship": { "type": "string", "maxLength": 60 },
+        "mobileNumber": { "type": "string", "maxLength": 24 },
+        "email": { "type": "string", "maxLength": 160 },
+        "priority": { "type": "number" },
+        "notifySms": { "type": "boolean" },
+        "notifyCall": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "riderId",
+        "name",
+        "relationship",
+        "mobileNumber",
+        "email",
+        "priority",
+        "notifySms",
+        "notifyCall",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "AccidentRecord": {
+      "title": "AccidentRecord",
+      "description": "Recorded emergency SOS or sensor-detected accident incident with resolution tracking.",
+      "type": "object",
+      "properties": {
+        "riderId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "riderName": { "type": "string", "maxLength": 120 },
+        "triggerType": { "type": "string", "enum": ["SOS_MANUAL", "ACCIDENT_AUTO", "TEST_DRILL"] },
+        "status": { "type": "string", "enum": ["ACTIVE", "RESPONDING", "RESOLVED", "CANCELLED_FALSE_ALARM"] },
+        "responseStatus": { "type": "string", "enum": ["PENDING", "DISPATCHED", "ACKNOWLEDGED", "HOSPITAL_EN_ROUTE", "CLOSED"] },
+        "latitude": { "type": "number" },
+        "longitude": { "type": "number" },
+        "locationAddress": { "type": "string", "maxLength": 300 },
+        "bikeId": { "type": "string", "maxLength": 128 },
+        "bikeSummary": { "type": "string", "maxLength": 160 },
+        "impactGForce": { "type": "number" },
+        "nearestHospitalName": { "type": "string", "maxLength": 160 },
+        "nearestHospitalAddress": { "type": "string", "maxLength": 300 },
+        "nearestHospitalDistanceKm": { "type": "number" },
+        "nearestHospitalPhone": { "type": "string", "maxLength": 40 },
+        "contactsNotifiedCount": { "type": "number" },
+        "notificationSummaryStatus": { "type": "string", "enum": ["PENDING", "SENT", "DELIVERED", "PARTIAL", "FAILED"] },
+        "smsSummaryStatus": { "type": "string", "enum": ["PENDING", "SENT", "DELIVERED", "DEVICE_HANDOFF", "FAILED"] },
+        "callSummaryStatus": { "type": "string", "enum": ["NOT_INITIATED", "INITIATED", "CONNECTED", "FAILED"] },
+        "liveShareSessionId": { "type": "string", "maxLength": 128 },
+        "medicalSnapshot": { "type": "string", "maxLength": 800 },
+        "notes": { "type": "string", "maxLength": 1000 },
+        "resolvedAtIso": { "type": "string", "maxLength": 40 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "riderId",
+        "riderName",
+        "triggerType",
+        "status",
+        "responseStatus",
+        "latitude",
+        "longitude",
+        "locationAddress",
+        "bikeId",
+        "bikeSummary",
+        "impactGForce",
+        "nearestHospitalName",
+        "nearestHospitalAddress",
+        "nearestHospitalDistanceKm",
+        "nearestHospitalPhone",
+        "contactsNotifiedCount",
+        "notificationSummaryStatus",
+        "smsSummaryStatus",
+        "callSummaryStatus",
+        "liveShareSessionId",
+        "medicalSnapshot",
+        "notes",
+        "resolvedAtIso",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "EmergencyNotification": {
+      "title": "EmergencyNotification",
+      "description": "Audit log of individual emergency alerts, SMS dispatches, and call attempts.",
+      "type": "object",
+      "properties": {
+        "riderId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "accidentId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "contactId": { "type": "string", "maxLength": 128 },
+        "contactName": { "type": "string", "maxLength": 120 },
+        "contactPhone": { "type": "string", "maxLength": 24 },
+        "channel": { "type": "string", "enum": ["APP_ALERT", "SMS", "CALL", "LIVE_LINK"] },
+        "alertStatus": { "type": "string", "enum": ["PENDING", "SENT", "DELIVERED", "FAILED"] },
+        "smsDeliveryStatus": { "type": "string", "enum": ["NOT_APPLICABLE", "PENDING", "QUEUED", "SENT", "DELIVERED", "DEVICE_HANDOFF", "FAILED"] },
+        "callStatus": { "type": "string", "enum": ["NOT_APPLICABLE", "INITIATED", "COMPLETED", "FAILED"] },
+        "messagePreview": { "type": "string", "maxLength": 600 },
+        "providerNote": { "type": "string", "maxLength": 300 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "riderId",
+        "accidentId",
+        "contactId",
+        "contactName",
+        "contactPhone",
+        "channel",
+        "alertStatus",
+        "smsDeliveryStatus",
+        "callStatus",
+        "messagePreview",
+        "providerNote",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "LiveLocationSession": {
+      "title": "LiveLocationSession",
+      "description": "Active real-time GPS tracking session shareable with authorized contacts via secret token.",
+      "type": "object",
+      "properties": {
+        "riderId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "accidentId": { "type": "string", "maxLength": 128 },
+        "riderName": { "type": "string", "maxLength": 120 },
+        "bikeSummary": { "type": "string", "maxLength": 160 },
+        "bloodGroup": { "type": "string", "maxLength": 10 },
+        "medicalAlertSummary": { "type": "string", "maxLength": 600 },
+        "latitude": { "type": "number" },
+        "longitude": { "type": "number" },
+        "accuracyMeters": { "type": "number" },
+        "speedKmh": { "type": "number" },
+        "heading": { "type": "number" },
+        "locationLabel": { "type": "string", "maxLength": 250 },
+        "nearestHospitalName": { "type": "string", "maxLength": 160 },
+        "nearestHospitalDistanceKm": { "type": "number" },
+        "isActive": { "type": "boolean" },
+        "lastGpsUpdateIso": { "type": "string", "maxLength": 40 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "riderId",
+        "accidentId",
+        "riderName",
+        "bikeSummary",
+        "bloodGroup",
+        "medicalAlertSummary",
+        "latitude",
+        "longitude",
+        "accuracyMeters",
+        "speedKmh",
+        "heading",
+        "locationLabel",
+        "nearestHospitalName",
+        "nearestHospitalDistanceKm",
+        "isActive",
+        "lastGpsUpdateIso",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "DeviceStatus": {
+      "title": "DeviceStatus",
+      "description": "Real-time device connection, GPS, sensor, network, and battery status snapshot.",
+      "type": "object",
+      "properties": {
+        "riderId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "riderName": { "type": "string", "maxLength": 120 },
+        "isConnected": { "type": "boolean" },
+        "gpsEnabled": { "type": "boolean" },
+        "locationPermission": { "type": "string", "enum": ["granted", "denied", "prompt", "unsupported"] },
+        "internetOnline": { "type": "boolean" },
+        "accelerometerAvailable": { "type": "boolean" },
+        "gyroscopeAvailable": { "type": "boolean" },
+        "accidentDetectionActive": { "type": "boolean" },
+        "batteryLevel": { "type": "number" },
+        "batteryCharging": { "type": "boolean" },
+        "lastLatitude": { "type": "number" },
+        "lastLongitude": { "type": "number" },
+        "userAgentSummary": { "type": "string", "maxLength": 160 },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "riderId",
+        "riderName",
+        "isConnected",
+        "gpsEnabled",
+        "locationPermission",
+        "internetOnline",
+        "accelerometerAvailable",
+        "gyroscopeAvailable",
+        "accidentDetectionActive",
+        "batteryLevel",
+        "batteryCharging",
+        "lastLatitude",
+        "lastLongitude",
+        "userAgentSummary",
+        "updatedAt"
+      ]
+    },
+    "HospitalRecord": {
+      "title": "HospitalRecord",
+      "description": "Admin-verified trauma and emergency hospital entry.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "maxLength": 160 },
+        "address": { "type": "string", "maxLength": 300 },
+        "phone": { "type": "string", "maxLength": 40 },
+        "latitude": { "type": "number" },
+        "longitude": { "type": "number" },
+        "traumaLevel": { "type": "string", "maxLength": 40 },
+        "emergency24x7": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "name",
+        "address",
+        "phone",
+        "latitude",
+        "longitude",
+        "traumaLevel",
+        "emergency24x7",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "AdminRole": {
+      "title": "AdminRole",
+      "description": "Trusted administrator directory for RBAC verification.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "email": { "type": "string", "format": "email", "maxLength": 160 },
+        "grantedBy": { "type": "string", "maxLength": 128 },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email", "grantedBy", "createdAt"]
+    },
+    "Esp32Device": {
+      "title": "Esp32Device",
+      "description": "Rider-owned ESP32 hardware safety module with configurable emergency phone numbers and sync token.",
+      "type": "object",
+      "properties": {
+        "riderId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "deviceName": { "type": "string", "maxLength": 80 },
+        "hardwareModel": { "type": "string", "maxLength": 80 },
+        "primaryNumber": { "type": "string", "maxLength": 24 },
+        "secondaryNumber": { "type": "string", "maxLength": 24 },
+        "tertiaryNumber": { "type": "string", "maxLength": 24 },
+        "syncToken": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "configVersion": { "type": "number" },
+        "lastSyncMethod": { "type": "string", "enum": ["NONE", "USB_SERIAL", "BLUETOOTH_BLE", "WIFI_CLOUD"] },
+        "lastSyncedAtIso": { "type": "string", "maxLength": 40 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "riderId",
+        "deviceName",
+        "hardwareModel",
+        "primaryNumber",
+        "secondaryNumber",
+        "tertiaryNumber",
+        "syncToken",
+        "configVersion",
+        "lastSyncMethod",
+        "lastSyncedAtIso",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "Esp32SyncConfig": {
+      "title": "Esp32SyncConfig",
+      "description": "Token-scoped emergency phone number payload polled over HTTPS by an ESP32 module.",
+      "type": "object",
+      "properties": {
+        "riderId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "deviceId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "deviceName": { "type": "string", "maxLength": 80 },
+        "primaryNumber": { "type": "string", "maxLength": 24 },
+        "secondaryNumber": { "type": "string", "maxLength": 24 },
+        "tertiaryNumber": { "type": "string", "maxLength": 24 },
+        "configVersion": { "type": "number" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "riderId",
+        "deviceId",
+        "deviceName",
+        "primaryNumber",
+        "secondaryNumber",
+        "tertiaryNumber",
+        "configVersion",
+        "updatedAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/riders/{riderId}": {
+      "schema": { "$ref": "#/entities/RiderProfile" },
+      "description": "Rider profile documents strictly accessible to the owner rider or verified admins."
+    },
+    "/riders/{riderId}/medical/record": {
+      "schema": { "$ref": "#/entities/MedicalRecord" },
+      "description": "Isolated medical history and encrypted Aadhaar vault accessible only to the rider or verified admins."
+    },
+    "/bikes/{bikeId}": {
+      "schema": { "$ref": "#/entities/Bike" },
+      "description": "Registered motorcycles owned by riders."
+    },
+    "/emergencyContacts/{contactId}": {
+      "schema": { "$ref": "#/entities/EmergencyContact" },
+      "description": "Priority-ordered emergency contacts for each rider."
+    },
+    "/accidents/{accidentId}": {
+      "schema": { "$ref": "#/entities/AccidentRecord" },
+      "description": "Accident records and SOS emergency incidents."
+    },
+    "/notifications/{notificationId}": {
+      "schema": { "$ref": "#/entities/EmergencyNotification" },
+      "description": "Emergency notification, SMS, and call delivery audit logs."
+    },
+    "/liveSessions/{sessionId}": {
+      "schema": { "$ref": "#/entities/LiveLocationSession" },
+      "description": "Real-time location sharing sessions readable by secret link while active."
+    },
+    "/deviceStatuses/{riderId}": {
+      "schema": { "$ref": "#/entities/DeviceStatus" },
+      "description": "Real-time device connection, GPS, sensor, and battery telemetry."
+    },
+    "/hospitals/{hospitalId}": {
+      "schema": { "$ref": "#/entities/HospitalRecord" },
+      "description": "Admin-managed emergency hospitals directory."
+    },
+    "/admins/{adminUid}": {
+      "schema": { "$ref": "#/entities/AdminRole" },
+      "description": "Trusted administrator allowlist documents."
+    },
+    "/esp32Devices/{deviceId}": {
+      "schema": { "$ref": "#/entities/Esp32Device" },
+      "description": "Rider ESP32 hardware tracker modules with editable emergency phone numbers."
+    },
+    "/esp32SyncConfigs/{syncToken}": {
+      "schema": { "$ref": "#/entities/Esp32SyncConfig" },
+      "description": "High-entropy token-scoped phone number config polled over HTTPS by ESP32 devices."
+    }
+  }
+}

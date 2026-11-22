@@ -1,0 +1,684 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global default-deny safety net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Core Security Primitives
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerified() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isOwner(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    function isBootstrappedAdmin() {
+      return isVerified() && request.auth.token.email == 'krishroy3211@gmail.com';
+    }
+
+    function isAdmin() {
+      return isBootstrappedAdmin() || (
+        isVerified() && exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidStr(val, maxLen) {
+      return val is string && val.size() <= maxLen;
+    }
+
+    function isNonEmptyStr(val, maxLen) {
+      return val is string && val.size() >= 1 && val.size() <= maxLen;
+    }
+
+    // Validation Blueprints (synchronized with firebase-blueprint.json)
+    function isValidRiderProfile(data) {
+      return data.keys().hasAll([
+        'uid', 'fullName', 'email', 'mobileNumber', 'dateOfBirth', 'age',
+        'profilePhotoUrl', 'role', 'biometricEnabled', 'biometricCredentialId',
+        'accidentCountdownSec', 'impactThresholdG', 'autoSmsEnabled',
+        'createdAt', 'updatedAt'
+      ]) && data.keys().hasOnly([
+        'uid', 'fullName', 'email', 'mobileNumber', 'dateOfBirth', 'age',
+        'profilePhotoUrl', 'role', 'biometricEnabled', 'biometricCredentialId',
+        'accidentCountdownSec', 'impactThresholdG', 'autoSmsEnabled',
+        'createdAt', 'updatedAt'
+      ])
+      && isValidId(data.uid)
+      && isNonEmptyStr(data.fullName, 120)
+      && isNonEmptyStr(data.email, 160)
+      && isValidStr(data.mobileNumber, 24)
+      && isValidStr(data.dateOfBirth, 20)
+      && (data.age is int || data.age is float) && data.age >= 0 && data.age <= 130
+      && isValidStr(data.profilePhotoUrl, 65000)
+      && data.role in ['rider', 'admin']
+      && data.biometricEnabled is bool
+      && isValidStr(data.biometricCredentialId, 256)
+      && (data.accidentCountdownSec is int || data.accidentCountdownSec is float)
+      && data.accidentCountdownSec >= 5 && data.accidentCountdownSec <= 60
+      && (data.impactThresholdG is int || data.impactThresholdG is float)
+      && data.impactThresholdG >= 1.5 && data.impactThresholdG <= 10.0
+      && data.autoSmsEnabled is bool
+      && data.createdAt is timestamp
+      && data.updatedAt is timestamp;
+    }
+
+    function isValidMedicalRecord(data) {
+      return data.keys().hasAll([
+        'riderId', 'bloodGroup', 'medicalConditions', 'allergies',
+        'medicalHistory', 'emergencyInstructions', 'aadhaarMasked',
+        'aadhaarEncrypted', 'encryptionIv', 'encryptionSalt', 'updatedAt'
+      ]) && data.keys().hasOnly([
+        'riderId', 'bloodGroup', 'medicalConditions', 'allergies',
+        'medicalHistory', 'emergencyInstructions', 'aadhaarMasked',
+        'aadhaarEncrypted', 'encryptionIv', 'encryptionSalt', 'updatedAt'
+      ])
+      && isValidId(data.riderId)
+      && isValidStr(data.bloodGroup, 10)
+      && isValidStr(data.medicalConditions, 500)
+      && isValidStr(data.allergies, 500)
+      && isValidStr(data.medicalHistory, 1500)
+      && isValidStr(data.emergencyInstructions, 1000)
+      && isValidStr(data.aadhaarMasked, 24)
+      && isValidStr(data.aadhaarEncrypted, 600)
+      && isValidStr(data.encryptionIv, 64)
+      && isValidStr(data.encryptionSalt, 64)
+      && data.updatedAt is timestamp;
+    }
+
+    function isValidBike(data) {
+      return data.keys().hasAll([
+        'riderId', 'registrationNumber', 'brand', 'model', 'color',
+        'manufacturingYear', 'vehiclePhotoUrl', 'insuranceProvider',
+        'insurancePolicyNumber', 'insuranceExpiry', 'rcNumber',
+        'ownerName', 'isPrimary', 'createdAt', 'updatedAt'
+      ]) && data.keys().hasOnly([
+        'riderId', 'registrationNumber', 'brand', 'model', 'color',
+        'manufacturingYear', 'vehiclePhotoUrl', 'insuranceProvider',
+        'insurancePolicyNumber', 'insuranceExpiry', 'rcNumber',
+        'ownerName', 'isPrimary', 'createdAt', 'updatedAt'
+      ])
+      && isValidId(data.riderId)
+      && isNonEmptyStr(data.registrationNumber, 32)
+      && isNonEmptyStr(data.brand, 60)
+      && isNonEmptyStr(data.model, 80)
+      && isValidStr(data.color, 40)
+      && (data.manufacturingYear is int || data.manufacturingYear is float)
+      && data.manufacturingYear >= 1950 && data.manufacturingYear <= 2035
+      && isValidStr(data.vehiclePhotoUrl, 65000)
+      && isValidStr(data.insuranceProvider, 100)
+      && isValidStr(data.insurancePolicyNumber, 80)
+      && isValidStr(data.insuranceExpiry, 20)
+      && isValidStr(data.rcNumber, 60)
+      && isValidStr(data.ownerName, 120)
+      && data.isPrimary is bool
+      && data.createdAt is timestamp
+      && data.updatedAt is timestamp;
+    }
+
+    function isValidEmergencyContact(data) {
+      return data.keys().hasAll([
+        'riderId', 'name', 'relationship', 'mobileNumber', 'email',
+        'priority', 'notifySms', 'notifyCall', 'createdAt', 'updatedAt'
+      ]) && data.keys().hasOnly([
+        'riderId', 'name', 'relationship', 'mobileNumber', 'email',
+        'priority', 'notifySms', 'notifyCall', 'createdAt', 'updatedAt'
+      ])
+      && isValidId(data.riderId)
+      && isNonEmptyStr(data.name, 120)
+      && isNonEmptyStr(data.relationship, 60)
+      && isNonEmptyStr(data.mobileNumber, 24)
+      && isValidStr(data.email, 160)
+      && (data.priority is int || data.priority is float)
+      && data.priority >= 1 && data.priority <= 10
+      && data.notifySms is bool
+      && data.notifyCall is bool
+      && data.createdAt is timestamp
+      && data.updatedAt is timestamp;
+    }
+
+    function isValidAccidentRecord(data) {
+      return data.keys().hasAll([
+        'riderId', 'riderName', 'triggerType', 'status', 'responseStatus',
+        'latitude', 'longitude', 'locationAddress', 'bikeId', 'bikeSummary',
+        'impactGForce', 'nearestHospitalName', 'nearestHospitalAddress',
+        'nearestHospitalDistanceKm', 'nearestHospitalPhone',
+        'contactsNotifiedCount', 'notificationSummaryStatus',
+        'smsSummaryStatus', 'callSummaryStatus', 'liveShareSessionId',
+        'medicalSnapshot', 'notes', 'resolvedAtIso', 'createdAt', 'updatedAt'
+      ]) && data.keys().hasOnly([
+        'riderId', 'riderName', 'triggerType', 'status', 'responseStatus',
+        'latitude', 'longitude', 'locationAddress', 'bikeId', 'bikeSummary',
+        'impactGForce', 'nearestHospitalName', 'nearestHospitalAddress',
+        'nearestHospitalDistanceKm', 'nearestHospitalPhone',
+        'contactsNotifiedCount', 'notificationSummaryStatus',
+        'smsSummaryStatus', 'callSummaryStatus', 'liveShareSessionId',
+        'medicalSnapshot', 'notes', 'resolvedAtIso', 'createdAt', 'updatedAt'
+      ])
+      && isValidId(data.riderId)
+      && isNonEmptyStr(data.riderName, 120)
+      && data.triggerType in ['SOS_MANUAL', 'ACCIDENT_AUTO', 'TEST_DRILL']
+      && data.status in ['ACTIVE', 'RESPONDING', 'RESOLVED', 'CANCELLED_FALSE_ALARM']
+      && data.responseStatus in ['PENDING', 'DISPATCHED', 'ACKNOWLEDGED', 'HOSPITAL_EN_ROUTE', 'CLOSED']
+      && (data.latitude is int || data.latitude is float) && data.latitude >= -90 && data.latitude <= 90
+      && (data.longitude is int || data.longitude is float) && data.longitude >= -180 && data.longitude <= 180
+      && isValidStr(data.locationAddress, 300)
+      && isValidStr(data.bikeId, 128)
+      && isValidStr(data.bikeSummary, 160)
+      && (data.impactGForce is int || data.impactGForce is float) && data.impactGForce >= 0 && data.impactGForce <= 100
+      && isValidStr(data.nearestHospitalName, 160)
+      && isValidStr(data.nearestHospitalAddress, 300)
+      && (data.nearestHospitalDistanceKm is int || data.nearestHospitalDistanceKm is float) && data.nearestHospitalDistanceKm >= 0
+      && isValidStr(data.nearestHospitalPhone, 40)
+      && (data.contactsNotifiedCount is int || data.contactsNotifiedCount is float) && data.contactsNotifiedCount >= 0 && data.contactsNotifiedCount <= 50
+      && data.notificationSummaryStatus in ['PENDING', 'SENT', 'DELIVERED', 'PARTIAL', 'FAILED']
+      && data.smsSummaryStatus in ['PENDING', 'SENT', 'DELIVERED', 'DEVICE_HANDOFF', 'FAILED']
+      && data.callSummaryStatus in ['NOT_INITIATED', 'INITIATED', 'CONNECTED', 'FAILED']
+      && isValidStr(data.liveShareSessionId, 128)
+      && isValidStr(data.medicalSnapshot, 800)
+      && isValidStr(data.notes, 1000)
+      && isValidStr(data.resolvedAtIso, 40)
+      && data.createdAt is timestamp
+      && data.updatedAt is timestamp;
+    }
+
+    function isValidNotification(data) {
+      return data.keys().hasAll([
+        'riderId', 'accidentId', 'contactId', 'contactName', 'contactPhone',
+        'channel', 'alertStatus', 'smsDeliveryStatus', 'callStatus',
+        'messagePreview', 'providerNote', 'createdAt', 'updatedAt'
+      ]) && data.keys().hasOnly([
+        'riderId', 'accidentId', 'contactId', 'contactName', 'contactPhone',
+        'channel', 'alertStatus', 'smsDeliveryStatus', 'callStatus',
+        'messagePreview', 'providerNote', 'createdAt', 'updatedAt'
+      ])
+      && isValidId(data.riderId)
+      && isValidId(data.accidentId)
+      && isValidStr(data.contactId, 128)
+      && isNonEmptyStr(data.contactName, 120)
+      && isValidStr(data.contactPhone, 24)
+      && data.channel in ['APP_ALERT', 'SMS', 'CALL', 'LIVE_LINK']
+      && data.alertStatus in ['PENDING', 'SENT', 'DELIVERED', 'FAILED']
+      && data.smsDeliveryStatus in ['NOT_APPLICABLE', 'PENDING', 'QUEUED', 'SENT', 'DELIVERED', 'DEVICE_HANDOFF', 'FAILED']
+      && data.callStatus in ['NOT_APPLICABLE', 'INITIATED', 'COMPLETED', 'FAILED']
+      && isValidStr(data.messagePreview, 600)
+      && isValidStr(data.providerNote, 300)
+      && data.createdAt is timestamp
+      && data.updatedAt is timestamp;
+    }
+
+    function isValidLiveSession(data) {
+      return data.keys().hasAll([
+        'riderId', 'accidentId', 'riderName', 'bikeSummary', 'bloodGroup',
+        'medicalAlertSummary', 'latitude', 'longitude', 'accuracyMeters',
+        'speedKmh', 'heading', 'locationLabel', 'nearestHospitalName',
+        'nearestHospitalDistanceKm', 'isActive', 'lastGpsUpdateIso',
+        'createdAt', 'updatedAt'
+      ]) && data.keys().hasOnly([
+        'riderId', 'accidentId', 'riderName', 'bikeSummary', 'bloodGroup',
+        'medicalAlertSummary', 'latitude', 'longitude', 'accuracyMeters',
+        'speedKmh', 'heading', 'locationLabel', 'nearestHospitalName',
+        'nearestHospitalDistanceKm', 'isActive', 'lastGpsUpdateIso',
+        'createdAt', 'updatedAt'
+      ])
+      && isValidId(data.riderId)
+      && isValidStr(data.accidentId, 128)
+      && isNonEmptyStr(data.riderName, 120)
+      && isValidStr(data.bikeSummary, 160)
+      && isValidStr(data.bloodGroup, 10)
+      && isValidStr(data.medicalAlertSummary, 600)
+      && (data.latitude is int || data.latitude is float) && data.latitude >= -90 && data.latitude <= 90
+      && (data.longitude is int || data.longitude is float) && data.longitude >= -180 && data.longitude <= 180
+      && (data.accuracyMeters is int || data.accuracyMeters is float) && data.accuracyMeters >= 0
+      && (data.speedKmh is int || data.speedKmh is float) && data.speedKmh >= 0
+      && (data.heading is int || data.heading is float)
+      && isValidStr(data.locationLabel, 250)
+      && isValidStr(data.nearestHospitalName, 160)
+      && (data.nearestHospitalDistanceKm is int || data.nearestHospitalDistanceKm is float) && data.nearestHospitalDistanceKm >= 0
+      && data.isActive is bool
+      && isValidStr(data.lastGpsUpdateIso, 40)
+      && data.createdAt is timestamp
+      && data.updatedAt is timestamp;
+    }
+
+    function isValidDeviceStatus(data) {
+      return data.keys().hasAll([
+        'riderId', 'riderName', 'isConnected', 'gpsEnabled',
+        'locationPermission', 'internetOnline', 'accelerometerAvailable',
+        'gyroscopeAvailable', 'accidentDetectionActive', 'batteryLevel',
+        'batteryCharging', 'lastLatitude', 'lastLongitude',
+        'userAgentSummary', 'updatedAt'
+      ]) && data.keys().hasOnly([
+        'riderId', 'riderName', 'isConnected', 'gpsEnabled',
+        'locationPermission', 'internetOnline', 'accelerometerAvailable',
+        'gyroscopeAvailable', 'accidentDetectionActive', 'batteryLevel',
+        'batteryCharging', 'lastLatitude', 'lastLongitude',
+        'userAgentSummary', 'updatedAt'
+      ])
+      && isValidId(data.riderId)
+      && isValidStr(data.riderName, 120)
+      && data.isConnected is bool
+      && data.gpsEnabled is bool
+      && data.locationPermission in ['granted', 'denied', 'prompt', 'unsupported']
+      && data.internetOnline is bool
+      && data.accelerometerAvailable is bool
+      && data.gyroscopeAvailable is bool
+      && data.accidentDetectionActive is bool
+      && (data.batteryLevel is int || data.batteryLevel is float) && data.batteryLevel >= -1 && data.batteryLevel <= 100
+      && data.batteryCharging is bool
+      && (data.lastLatitude is int || data.lastLatitude is float) && data.lastLatitude >= -90 && data.lastLatitude <= 90
+      && (data.lastLongitude is int || data.lastLongitude is float) && data.lastLongitude >= -180 && data.lastLongitude <= 180
+      && isValidStr(data.userAgentSummary, 160)
+      && data.updatedAt is timestamp;
+    }
+
+    function isValidHospital(data) {
+      return data.keys().hasAll([
+        'name', 'address', 'phone', 'latitude', 'longitude',
+        'traumaLevel', 'emergency24x7', 'createdAt', 'updatedAt'
+      ]) && data.keys().hasOnly([
+        'name', 'address', 'phone', 'latitude', 'longitude',
+        'traumaLevel', 'emergency24x7', 'createdAt', 'updatedAt'
+      ])
+      && isNonEmptyStr(data.name, 160)
+      && isNonEmptyStr(data.address, 300)
+      && isValidStr(data.phone, 40)
+      && (data.latitude is int || data.latitude is float) && data.latitude >= -90 && data.latitude <= 90
+      && (data.longitude is int || data.longitude is float) && data.longitude >= -180 && data.longitude <= 180
+      && isValidStr(data.traumaLevel, 40)
+      && data.emergency24x7 is bool
+      && data.createdAt is timestamp
+      && data.updatedAt is timestamp;
+    }
+
+    function isValidAdminRole(data) {
+      return data.keys().hasAll(['uid', 'email', 'grantedBy', 'createdAt'])
+      && data.keys().hasOnly(['uid', 'email', 'grantedBy', 'createdAt'])
+      && isValidId(data.uid)
+      && isNonEmptyStr(data.email, 160)
+      && isValidId(data.grantedBy)
+      && data.createdAt is timestamp;
+    }
+
+    function isValidEsp32Device(data) {
+      return data.keys().hasAll([
+        'riderId', 'deviceName', 'hardwareModel', 'primaryNumber',
+        'secondaryNumber', 'tertiaryNumber', 'syncToken', 'configVersion',
+        'lastSyncMethod', 'lastSyncedAtIso', 'createdAt', 'updatedAt'
+      ]) && data.keys().hasOnly([
+        'riderId', 'deviceName', 'hardwareModel', 'primaryNumber',
+        'secondaryNumber', 'tertiaryNumber', 'syncToken', 'configVersion',
+        'lastSyncMethod', 'lastSyncedAtIso', 'createdAt', 'updatedAt'
+      ])
+      && isValidId(data.riderId)
+      && isNonEmptyStr(data.deviceName, 80)
+      && isValidStr(data.hardwareModel, 80)
+      && isValidStr(data.primaryNumber, 24)
+      && isValidStr(data.secondaryNumber, 24)
+      && isValidStr(data.tertiaryNumber, 24)
+      && isValidId(data.syncToken) && data.syncToken.size() >= 28
+      && (data.configVersion is int || data.configVersion is float) && data.configVersion >= 1
+      && data.lastSyncMethod in ['NONE', 'USB_SERIAL', 'BLUETOOTH_BLE', 'WIFI_CLOUD']
+      && isValidStr(data.lastSyncedAtIso, 40)
+      && data.createdAt is timestamp
+      && data.updatedAt is timestamp;
+    }
+
+    function isValidEsp32SyncConfig(data) {
+      return data.keys().hasAll([
+        'riderId', 'deviceId', 'deviceName', 'primaryNumber',
+        'secondaryNumber', 'tertiaryNumber', 'configVersion', 'updatedAt'
+      ]) && data.keys().hasOnly([
+        'riderId', 'deviceId', 'deviceName', 'primaryNumber',
+        'secondaryNumber', 'tertiaryNumber', 'configVersion', 'updatedAt'
+      ])
+      && isValidId(data.riderId)
+      && isValidId(data.deviceId)
+      && isNonEmptyStr(data.deviceName, 80)
+      && isValidStr(data.primaryNumber, 24)
+      && isValidStr(data.secondaryNumber, 24)
+      && isValidStr(data.tertiaryNumber, 24)
+      && (data.configVersion is int || data.configVersion is float) && data.configVersion >= 1
+      && data.updatedAt is timestamp;
+    }
+
+    // 1. Riders Collection (PII isolated to owner or verified admin)
+    match /riders/{riderId} {
+      allow get: if isValidId(riderId) && (isOwner(riderId) || isAdmin());
+      allow list: if isBootstrappedAdmin();
+      allow create: if isVerified()
+        && isValidId(riderId)
+        && isValidRiderProfile(incoming())
+        && incoming().uid == riderId
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time
+        && (
+          (isOwner(riderId) && incoming().role == 'rider') ||
+          isAdmin()
+        );
+      allow update: if isVerified()
+        && isValidId(riderId)
+        && isValidRiderProfile(incoming())
+        && incoming().uid == existing().uid
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          isAdmin() ||
+          (isOwner(riderId) && incoming().role == existing().role && incoming().diff(existing()).affectedKeys().hasOnly([
+            'fullName', 'mobileNumber', 'dateOfBirth', 'age', 'profilePhotoUrl',
+            'biometricEnabled', 'biometricCredentialId', 'accidentCountdownSec',
+            'impactThresholdG', 'autoSmsEnabled', 'updatedAt'
+          ]))
+        );
+      allow delete: if isValidId(riderId) && isAdmin();
+
+      // Isolated Medical & Encrypted Aadhaar Subcollection (Master Gate requires parent rider doc)
+      match /medical/{recordId} {
+        allow get: if isValidId(riderId) && recordId == 'record' && (isOwner(riderId) || isAdmin());
+        allow list: if false;
+        allow create: if isVerified()
+          && isValidId(riderId)
+          && recordId == 'record'
+          && isValidMedicalRecord(incoming())
+          && incoming().riderId == riderId
+          && incoming().updatedAt == request.time
+          && (isOwner(riderId) || isAdmin())
+          && exists(/databases/$(database)/documents/riders/$(riderId));
+        allow update: if isVerified()
+          && isValidId(riderId)
+          && recordId == 'record'
+          && isValidMedicalRecord(incoming())
+          && incoming().riderId == existing().riderId
+          && incoming().updatedAt == request.time
+          && (
+            isAdmin() ||
+            (isOwner(riderId) && incoming().diff(existing()).affectedKeys().hasOnly([
+              'bloodGroup', 'medicalConditions', 'allergies', 'medicalHistory',
+              'emergencyInstructions', 'aadhaarMasked', 'aadhaarEncrypted',
+              'encryptionIv', 'encryptionSalt', 'updatedAt'
+            ]))
+          );
+        allow delete: if isValidId(riderId) && recordId == 'record' && (isOwner(riderId) || isAdmin());
+      }
+    }
+
+    // 2. Bikes Collection
+    match /bikes/{bikeId} {
+      allow get: if isValidId(bikeId) && isSignedIn() && (existing().riderId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (existing().riderId == request.auth.uid || isBootstrappedAdmin());
+      allow create: if isVerified()
+        && isValidId(bikeId)
+        && isValidBike(incoming())
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time
+        && (incoming().riderId == request.auth.uid || isAdmin())
+        && exists(/databases/$(database)/documents/riders/$(incoming().riderId));
+      allow update: if isVerified()
+        && isValidId(bikeId)
+        && isValidBike(incoming())
+        && incoming().riderId == existing().riderId
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          isAdmin() ||
+          (existing().riderId == request.auth.uid && incoming().diff(existing()).affectedKeys().hasOnly([
+            'registrationNumber', 'brand', 'model', 'color', 'manufacturingYear',
+            'vehiclePhotoUrl', 'insuranceProvider', 'insurancePolicyNumber',
+            'insuranceExpiry', 'rcNumber', 'ownerName', 'isPrimary', 'updatedAt'
+          ]))
+        );
+      allow delete: if isVerified() && isValidId(bikeId) && (existing().riderId == request.auth.uid || isAdmin());
+    }
+
+    // 3. Emergency Contacts Collection
+    match /emergencyContacts/{contactId} {
+      allow get: if isValidId(contactId) && isSignedIn() && (existing().riderId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (existing().riderId == request.auth.uid || isBootstrappedAdmin());
+      allow create: if isVerified()
+        && isValidId(contactId)
+        && isValidEmergencyContact(incoming())
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time
+        && (incoming().riderId == request.auth.uid || isAdmin())
+        && exists(/databases/$(database)/documents/riders/$(incoming().riderId));
+      allow update: if isVerified()
+        && isValidId(contactId)
+        && isValidEmergencyContact(incoming())
+        && incoming().riderId == existing().riderId
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          isAdmin() ||
+          (existing().riderId == request.auth.uid && incoming().diff(existing()).affectedKeys().hasOnly([
+            'name', 'relationship', 'mobileNumber', 'email', 'priority',
+            'notifySms', 'notifyCall', 'updatedAt'
+          ]))
+        );
+      allow delete: if isVerified() && isValidId(contactId) && (existing().riderId == request.auth.uid || isAdmin());
+    }
+
+    // 4. Accidents & Active Emergency Alerts Collection
+    match /accidents/{accidentId} {
+      allow get: if isValidId(accidentId) && isSignedIn() && (existing().riderId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (existing().riderId == request.auth.uid || isBootstrappedAdmin());
+      allow create: if isVerified()
+        && isValidId(accidentId)
+        && isValidAccidentRecord(incoming())
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time
+        && (incoming().riderId == request.auth.uid || isAdmin())
+        && exists(/databases/$(database)/documents/riders/$(incoming().riderId));
+      allow update: if isVerified()
+        && isValidId(accidentId)
+        && isValidAccidentRecord(incoming())
+        && incoming().riderId == existing().riderId
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          isAdmin() ||
+          (
+            existing().riderId == request.auth.uid
+            && existing().status != 'RESOLVED'
+            && existing().status != 'CANCELLED_FALSE_ALARM'
+            && incoming().diff(existing()).affectedKeys().hasOnly([
+              'status', 'responseStatus', 'latitude', 'longitude', 'locationAddress',
+              'nearestHospitalName', 'nearestHospitalAddress', 'nearestHospitalDistanceKm',
+              'nearestHospitalPhone', 'contactsNotifiedCount', 'notificationSummaryStatus',
+              'smsSummaryStatus', 'callSummaryStatus', 'liveShareSessionId',
+              'notes', 'resolvedAtIso', 'updatedAt'
+            ])
+          )
+        );
+      allow delete: if isVerified() && isValidId(accidentId) && isAdmin();
+    }
+
+    // 5. Emergency Notifications Audit Collection
+    match /notifications/{notificationId} {
+      allow get: if isValidId(notificationId) && isSignedIn() && (existing().riderId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (existing().riderId == request.auth.uid || isBootstrappedAdmin());
+      allow create: if isVerified()
+        && isValidId(notificationId)
+        && isValidNotification(incoming())
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time
+        && (incoming().riderId == request.auth.uid || isAdmin())
+        && exists(/databases/$(database)/documents/accidents/$(incoming().accidentId));
+      allow update: if isVerified()
+        && isValidId(notificationId)
+        && isValidNotification(incoming())
+        && incoming().riderId == existing().riderId
+        && incoming().accidentId == existing().accidentId
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          isAdmin() ||
+          (existing().riderId == request.auth.uid && incoming().diff(existing()).affectedKeys().hasOnly([
+            'alertStatus', 'smsDeliveryStatus', 'callStatus', 'providerNote', 'updatedAt'
+          ]))
+        );
+      allow delete: if isVerified() && isValidId(notificationId) && isAdmin();
+    }
+
+    // 6. Live Location Sharing Sessions (Scoped secret-link get while active)
+    match /liveSessions/{sessionId} {
+      allow get: if isValidId(sessionId) && (
+        (existing().isActive == true && sessionId.size() >= 24) ||
+        (isSignedIn() && (existing().riderId == request.auth.uid || isAdmin()))
+      );
+      allow list: if isSignedIn() && (existing().riderId == request.auth.uid || isBootstrappedAdmin());
+      allow create: if isVerified()
+        && isValidId(sessionId)
+        && sessionId.size() >= 24
+        && isValidLiveSession(incoming())
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time
+        && (incoming().riderId == request.auth.uid || isAdmin());
+      allow update: if isVerified()
+        && isValidId(sessionId)
+        && isValidLiveSession(incoming())
+        && incoming().riderId == existing().riderId
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          isAdmin() ||
+          (existing().riderId == request.auth.uid && incoming().diff(existing()).affectedKeys().hasOnly([
+            'latitude', 'longitude', 'accuracyMeters', 'speedKmh', 'heading',
+            'locationLabel', 'nearestHospitalName', 'nearestHospitalDistanceKm',
+            'isActive', 'lastGpsUpdateIso', 'updatedAt'
+          ]))
+        );
+      allow delete: if isVerified() && isValidId(sessionId) && (existing().riderId == request.auth.uid || isAdmin());
+    }
+
+    // 7. Device Connection Status Telemetry
+    match /deviceStatuses/{riderId} {
+      allow get: if isValidId(riderId) && isSignedIn() && (isOwner(riderId) || isAdmin());
+      allow list: if isSignedIn() && (existing().riderId == request.auth.uid || isBootstrappedAdmin());
+      allow create: if isVerified()
+        && isValidId(riderId)
+        && isValidDeviceStatus(incoming())
+        && incoming().riderId == riderId
+        && incoming().updatedAt == request.time
+        && (isOwner(riderId) || isAdmin());
+      allow update: if isVerified()
+        && isValidId(riderId)
+        && isValidDeviceStatus(incoming())
+        && incoming().riderId == existing().riderId
+        && incoming().updatedAt == request.time
+        && (
+          isAdmin() ||
+          (isOwner(riderId) && incoming().diff(existing()).affectedKeys().hasOnly([
+            'riderName', 'isConnected', 'gpsEnabled', 'locationPermission',
+            'internetOnline', 'accelerometerAvailable', 'gyroscopeAvailable',
+            'accidentDetectionActive', 'batteryLevel', 'batteryCharging',
+            'lastLatitude', 'lastLongitude', 'userAgentSummary', 'updatedAt'
+          ]))
+        );
+      allow delete: if isVerified() && isValidId(riderId) && isAdmin();
+    }
+
+    // 8. Admin-Verified Emergency Hospitals Directory (Non-PII public medical directory)
+    match /hospitals/{hospitalId} {
+      allow get: if isValidId(hospitalId) && isSignedIn();
+      allow list: if isSignedIn() && existing().emergency24x7 in [true, false];
+      allow create: if isAdmin()
+        && isValidId(hospitalId)
+        && isValidHospital(incoming())
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isAdmin()
+        && isValidId(hospitalId)
+        && isValidHospital(incoming())
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time;
+      allow delete: if isAdmin() && isValidId(hospitalId);
+    }
+
+    // 9. Trusted Admin Directory
+    match /admins/{adminUid} {
+      allow get: if isValidId(adminUid) && (isOwner(adminUid) || isAdmin());
+      allow list: if isBootstrappedAdmin();
+      allow create: if isAdmin()
+        && isValidId(adminUid)
+        && isValidAdminRole(incoming())
+        && incoming().uid == adminUid
+        && incoming().createdAt == request.time;
+      allow update: if false;
+      allow delete: if isAdmin() && isValidId(adminUid);
+    }
+
+    // 10. Rider ESP32 Hardware Modules
+    match /esp32Devices/{deviceId} {
+      allow get: if isValidId(deviceId) && isSignedIn() && (existing().riderId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (existing().riderId == request.auth.uid || isBootstrappedAdmin());
+      allow create: if isVerified()
+        && isValidId(deviceId)
+        && isValidEsp32Device(incoming())
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time
+        && (incoming().riderId == request.auth.uid || isAdmin())
+        && exists(/databases/$(database)/documents/riders/$(incoming().riderId));
+      allow update: if isVerified()
+        && isValidId(deviceId)
+        && isValidEsp32Device(incoming())
+        && incoming().riderId == existing().riderId
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          isAdmin() ||
+          (existing().riderId == request.auth.uid && incoming().diff(existing()).affectedKeys().hasOnly([
+            'deviceName', 'hardwareModel', 'primaryNumber', 'secondaryNumber',
+            'tertiaryNumber', 'syncToken', 'configVersion', 'lastSyncMethod',
+            'lastSyncedAtIso', 'updatedAt'
+          ]))
+        );
+      allow delete: if isVerified() && isValidId(deviceId) && (existing().riderId == request.auth.uid || isAdmin());
+    }
+
+    // 11. Token-Scoped ESP32 Cloud Polling Payloads (High-entropy token >= 28 chars)
+    match /esp32SyncConfigs/{syncToken} {
+      allow get: if isValidId(syncToken) && syncToken.size() >= 28;
+      allow list: if isSignedIn() && (existing().riderId == request.auth.uid || isBootstrappedAdmin());
+      allow create: if isVerified()
+        && isValidId(syncToken)
+        && syncToken.size() >= 28
+        && isValidEsp32SyncConfig(incoming())
+        && incoming().updatedAt == request.time
+        && (incoming().riderId == request.auth.uid || isAdmin());
+      allow update: if isVerified()
+        && isValidId(syncToken)
+        && syncToken.size() >= 28
+        && isValidEsp32SyncConfig(incoming())
+        && incoming().riderId == existing().riderId
+        && incoming().deviceId == existing().deviceId
+        && incoming().updatedAt == request.time
+        && (
+          isAdmin() ||
+          (existing().riderId == request.auth.uid && incoming().diff(existing()).affectedKeys().hasOnly([
+            'deviceName', 'primaryNumber', 'secondaryNumber', 'tertiaryNumber',
+            'configVersion', 'updatedAt'
+          ]))
+        );
+      allow delete: if isVerified() && isValidId(syncToken) && (existing().riderId == request.auth.uid || isAdmin());
+    }
+  }
+}
